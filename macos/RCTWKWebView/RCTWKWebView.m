@@ -24,7 +24,7 @@
 }
 @end
 
-@interface RCTWKWebView () <WKNavigationDelegate, RCTAutoInsetsProtocol, WKScriptMessageHandler, WKUIDelegate/*, UIScrollViewDelegate */>
+@interface RCTWKWebView () <WKNavigationDelegate, RCTAutoInsetsProtocol, WKScriptMessageHandler, WKUIDelegate/*, UIScrollViewDelegate */, NSGestureRecognizerDelegate>
 
 @property (nonatomic, copy) RCTDirectEventBlock onLoadingStart;
 @property (nonatomic, copy) RCTDirectEventBlock onLoadingFinish;
@@ -46,6 +46,7 @@
   BOOL _injectedJavaScriptForMainFrameOnly;
   NSString *_injectJavaScript;
   NSString *_injectedJavaScript;
+  NSClickGestureRecognizer * _gestureRecognizer; // Or https://stackoverflow.com/a/10948071/5951226 may be cleaner
 }
 
 - (void)reactSetFrame:(CGRect)frame
@@ -74,10 +75,16 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
     WKUserContentController* userController = [[WKUserContentController alloc]init];
     [userController addScriptMessageHandler:[[WeakScriptMessageDelegate alloc] initWithDelegate:self] name:@"reactNative"];
     config.userContentController = userController;
+    NSLog(@"VERSION TWO");
     
     _webView = [[WKWebView alloc] initWithFrame:self.bounds configuration:config];
     _webView.UIDelegate = self;
     _webView.navigationDelegate = self;
+    _webView.acceptsTouchEvents = YES;
+    
+    _gestureRecognizer = [[NSClickGestureRecognizer alloc] initWithTarget: _webView action: @selector(handleGesture:)];
+    _gestureRecognizer.delegate = self;
+    [_webView addGestureRecognizer:_gestureRecognizer];
 
 /* Removed because macOS WKWebView doesn't have a scrollView */
 //    _webView.scrollView.delegate = self;
@@ -96,6 +103,28 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
     [self addSubview:_webView];
   }
   return self;
+}
+
+//- (void)mouseDown:(NSEvent *)event {
+//  NSLog(@"mouseDown called!");
+//}
+
+- (BOOL)gestureRecognizer:(NSGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(NSTouch *)touch NS_AVAILABLE_MAC(10_12_2) {
+  return YES;
+}
+
+- (BOOL)gestureRecognizer:(NSGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(NSGestureRecognizer *)otherGestureRecognizer
+{
+  return YES;
+}
+
+- (void)handleGesture:(NSGestureRecognizer *)gesture
+{
+  NSLog(@"handleGesture called!");
+  if(gesture.state == NSGestureRecognizerStateEnded){
+    NSPoint clickPoint = [gesture locationInView:_webView];
+    NSLog(@"x: %f; y: %f", clickPoint.x, clickPoint.y);
+  }
 }
 
 - (void)setInjectJavaScript:(NSString *)injectJavaScript {
@@ -423,6 +452,9 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
   [_webView removeObserver:self forKeyPath:@"estimatedProgress"];
   _webView.navigationDelegate = nil;
   _webView.UIDelegate = nil;
+  _gestureRecognizer.delegate = nil;
+  [_webView removeGestureRecognizer: _gestureRecognizer];
+  NSLog(@"DEALLOC WKWEBVIEW");
   /* Removed because macOS WKWebView doesn't have a scrollView */
 //  _webView.scrollView.delegate = nil;
 }
