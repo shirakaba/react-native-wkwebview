@@ -31,6 +31,8 @@
 {
   NSConditionLock *_shouldStartLoadLock;
   BOOL _shouldStartLoad;
+  NSConditionLock *_shouldResumeLoadLock;
+  BOOL _shouldResumeLoad;
 }
 
 RCT_EXPORT_MODULE()
@@ -60,6 +62,7 @@ RCT_EXPORT_VIEW_PROPERTY(onLoadingStart, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onLoadingFinish, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onLoadingError, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onShouldStartLoadWithRequest, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onShouldResumeLoadWithResponse, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onProgress, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onMessage, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onScroll, RCTDirectEventBlock)
@@ -207,6 +210,17 @@ RCT_EXPORT_METHOD(startLoadWithResult:(BOOL)result lockIdentifier:(NSInteger)loc
   } else {
     RCTLogWarn(@"startLoadWithResult invoked with invalid lockIdentifier: "
                "got %zd, expected %zd", lockIdentifier, _shouldStartLoadLock.condition);
+  }
+}
+
+RCT_EXPORT_METHOD(resumeLoadWithResult:(BOOL)result lockIdentifier:(NSInteger)lockIdentifier)
+{
+  if ([_shouldResumeLoadLock tryLockWhenCondition:lockIdentifier]) {
+    _shouldResumeLoad = result;
+    [_shouldResumeLoadLock unlockWithCondition:0];
+  } else {
+    RCTLogWarn(@"resumeLoadWithResult invoked with invalid lockIdentifier: "
+               "got %zd, expected %zd", lockIdentifier, _shouldResumeLoadLock.condition);
   }
 }
 

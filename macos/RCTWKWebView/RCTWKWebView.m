@@ -30,6 +30,7 @@
 @property (nonatomic, copy) RCTDirectEventBlock onLoadingFinish;
 @property (nonatomic, copy) RCTDirectEventBlock onLoadingError;
 @property (nonatomic, copy) RCTDirectEventBlock onShouldStartLoadWithRequest;
+@property (nonatomic, copy) RCTDirectEventBlock onShouldResumeLoadWithResponse;
 @property (nonatomic, copy) RCTDirectEventBlock onProgress;
 @property (nonatomic, copy) RCTDirectEventBlock onMessage;
 @property (nonatomic, copy) RCTDirectEventBlock onScroll;
@@ -524,6 +525,26 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
   else {
     decisionHandler(WKNavigationActionPolicyAllow);
   }
+}
+
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)navigationResponse decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler
+{
+  NSURL* url = navigationResponse.response.URL;
+  NSString* mimeType = navigationResponse.response.MIMEType;
+  
+  if (_onShouldResumeLoadWithResponse) {
+    NSMutableDictionary<NSString *, id> *event = [self baseEvent];
+    [event addEntriesFromDictionary: @{
+                                       @"url": url.absoluteString,
+                                       @"mimeType": mimeType ? mimeType : [NSNull null]
+                                       }];
+    if (![self.delegate webView:self
+      shouldResumeLoadForResponse:event
+                   withCallback:_onShouldResumeLoadWithResponse]) {
+      return decisionHandler(WKNavigationResponsePolicyCancel);
+    }
+  }
+  return decisionHandler(WKNavigationResponsePolicyAllow);
 }
 
 - (void)webView:(__unused WKWebView *)webView didFailProvisionalNavigation:(__unused WKNavigation *)navigation withError:(NSError *)error

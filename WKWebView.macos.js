@@ -224,6 +224,12 @@ class WKWebView extends React.Component {
      */
     onShouldStartLoadWithRequest: PropTypes.func,
     /**
+     * Allows custom handling of any webview responses by a JS handler, e.g. with respect to MIME type. Return true
+     * or false from this method to continue loading the response.
+     * @platform macos
+     */
+    onShouldResumeLoadWithResponse: PropTypes.func,
+    /**
      * Copies cookies from sharedHTTPCookieStorage when calling loadRequest.
      * Set this to true to emulate behavior of WebView component.
      */
@@ -309,6 +315,12 @@ class WKWebView extends React.Component {
       WKWebViewManager.startLoadWithResult(!!shouldStart, event.nativeEvent.lockIdentifier);
     });
 
+    const onShouldResumeLoadWithResponse = this.props.onShouldResumeLoadWithResponse && ((event: Event) => {
+      const shouldResume = this.props.onShouldResumeLoadWithResponse &&
+        this.props.onShouldResumeLoadWithResponse(event.nativeEvent);
+      WKWebViewManager.resumeLoadWithResult(!!shouldResume, event.nativeEvent.lockIdentifier);
+    });
+
     let source = {};
     if (this.props.source && typeof this.props.source == 'object') {
       source = Object.assign({}, this.props.source, {
@@ -354,6 +366,7 @@ class WKWebView extends React.Component {
         onMessage={this._onMessage}
         onScroll={this._onScroll}
         onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
+        onShouldResumeLoadWithResponse={onShouldResumeLoadWithResponse}
         pagingEnabled={this.props.pagingEnabled}
         directionalLockEnabled={this.props.directionalLockEnabled}
       />;
